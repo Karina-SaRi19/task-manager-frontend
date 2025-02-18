@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Form, Input, Button, Card, Typography } from "antd";
+import { Form, Input, Button, Card, Typography, Space } from "antd";
+import axios from "axios"; // Para enviar solicitudes HTTP
 
-const users = [{ username: "admin", password: "1234" }];
 
 const { Title } = Typography;
 
@@ -10,16 +10,36 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = (values) => {
-    const user = users.find(
-      (u) => u.username === values.username && u.password === values.password
-    );
-    if (user) {
-      navigate("/dashboard");
-    } else {
-      setError("Credenciales incorrectas");
+  const handleLogin = async (values) => {
+    console.log("UserName:", values.username);
+    console.log("Password:", values.password);
+
+    try {
+        // Enviar los datos con encabezado Content-Type: application/json
+        const response = await axios.post(
+            "http://localhost:3000/login", 
+            {
+                username: values.username,  // Asegúrate de que sea el nombre de usuario
+                password: values.password
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json'  // Asegúrate de que se envíe como JSON
+                }
+            }
+        );
+
+        // Si el login es exitoso, guarda el token y el userId
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("userId", response.data.userId);
+
+        navigate("/dashboard");  // Redirige al dashboard
+    } catch (error) {
+        console.error('Error en login:', error.response ? error.response.data : error.message);  // Log de error completo
+        setError("Credenciales incorrectas");
     }
-  };
+};
+
 
   return (
     <div
@@ -71,20 +91,31 @@ const LoginPage = () => {
 
           <Form.Item style={{ marginTop: "30px" }}>
             <Button
-                htmlType="submit"
-                block
-                style={{
+              htmlType="submit"
+              block
+              style={{
                 backgroundColor: "#A19AD3",
                 borderColor: "#500073",
                 color: "black",
                 height: 35,
                 fontSize: "16px",
                 borderRadius: 8,
-                }}
+              }}
             >
-                Entrar
+              Entrar
             </Button>
-            </Form.Item>         
+          </Form.Item>
+
+          <Form.Item>
+            <Space>
+            <p>
+              ¿No tienes una cuenta?{" "}
+              <button onClick={() => navigate("/registro")} style={{ border: "none", background: "none", color: "blue", cursor: "pointer" }}>
+                  Registrate aqui
+              </button>
+            </p>
+            </Space>
+          </Form.Item>        
         </Form>
       </Card>
     </div>

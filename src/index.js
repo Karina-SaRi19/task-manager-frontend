@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage/LandingPage";
 import LoginPage from "./pages/LoginPage/LoginPage";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
+import RegistroPage from "./pages/Registro/RegistroPage";
 import "antd/dist/reset.css"; 
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
@@ -14,6 +15,7 @@ root.render(
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/Registro" element={<RegistroPage />} />
       </Routes>
     </Router>
   </React.StrictMode>
