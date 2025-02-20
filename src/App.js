@@ -5,6 +5,7 @@ import DashboardPage from './pages/Dashboard/DashboardPage';
 import LandingPage from './pages/LandingPage/LandingPage';
 import LoginPage from './pages/LoginPage/LoginPage';
 import RegistroPage from './pages/Registro/RegistroPage';
+import TaskPage from './pages/Task/TaskPage';
 
 const App = () => {
   return (
@@ -13,6 +14,7 @@ const App = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/Registro" element={<RegistroPage />} />
+        <Route path="/Task" element={<TaskPage />} />
         <Route
           path="/dashboard"
           element={

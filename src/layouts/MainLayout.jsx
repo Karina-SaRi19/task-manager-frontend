@@ -1,11 +1,13 @@
 import React from "react";
 import { Layout, Menu } from "antd";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 const { Header, Content, Sider } = Layout;
-const { SubMenu } = Menu; 
+const { SubMenu } = Menu;
 
 const MainLayout = ({ children }) => {
+  const location = useLocation(); // 📌 Obtiene la ruta actual
+
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Sider
@@ -17,28 +19,40 @@ const MainLayout = ({ children }) => {
         <Menu
           theme="dark"
           mode="inline"
-          defaultSelectedKeys={["1"]}
+          selectedKeys={[location.pathname]} // 📌 Hace que la selección cambie dinámicamente
           style={{
             background: "linear-gradient(90deg, rgba(135,35,65,1) 19%, rgba(225,149,171,1) 100%)",
           }}
         >
-          <SubMenu key="sub1" title="Dashboard" style={{ marginBottom: "10px" }}>
-            <Menu.Item key="1">
+          {/* 📌 Dashboard con menú desplegable */}
+          <SubMenu
+            key="sub1"
+            title={
+              <Link to="/dashboard" style={{ color: "white", textDecoration: "none" }}>
+                Dashboard
+              </Link>
+            }
+            style={{ marginBottom: "10px" }}
+          >
+            <Menu.Item key="/menu">
               <Link to="/menu">Menu</Link>
             </Menu.Item>
-            <Menu.Item key="2">
+            <Menu.Item key="/option1">
               <Link to="/option1">Opción 1</Link>
             </Menu.Item>
-            <Menu.Item key="3">
+            <Menu.Item key="/option2">
               <Link to="/option2">Opción 2</Link>
             </Menu.Item>
           </SubMenu>
 
-          <Menu.Item key="4" style={{ marginBottom: "10px" }}>
-            <Link to="/tasks">Tasks</Link>
+          <Menu.Item key="/Task" style={{ marginBottom: "10px" }}>
+            <Link to="/Task">Tasks</Link>
           </Menu.Item>
-          <Menu.Item key="5" style={{ marginBottom: "10px" }}>
+          <Menu.Item key="/profile" style={{ marginBottom: "10px" }}>
             <Link to="/profile">Profile</Link>
+          </Menu.Item>
+          <Menu.Item key="/login" style={{ marginBottom: "10px" }}>
+            <Link to="/login">Cerrar Sesión</Link>
           </Menu.Item>
         </Menu>
       </Sider>
