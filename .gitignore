@@ -1,11 +1,7 @@
-# Ignorar el archivo de credenciales
+# Ignorar taskServiceKey.json
 backend/taskServiceKey.json
 
-# Ignorar el directorio node_modules (si usas Node.js)
+# Ignorar node_modules
 node_modules/
 
-# Ignorar archivos de compilación
-/dist/
-/build/
-
-# Otros archivos o directorios específicos que no quieras subir
+# Otros archivos y carpetas que quieras ignorar
