@@ -46,7 +46,10 @@ const RegistroPage = () => {
           <Form.Item 
             label="Nombre de Usuario" 
             name="username" 
-            rules={[{ required: true, message: "Ingrese un nombre de usuario" }]}
+            rules={[
+              { required: true, message: "Ingrese un nombre de usuario" },
+              { pattern: /^[^\s].*[^\s]$/, message: "El nombre de usuario no puede tener espacios al inicio o al final" }
+            ]}
           >
             <Input placeholder="Ingrese su usuario" />
           </Form.Item>
@@ -54,7 +57,11 @@ const RegistroPage = () => {
           <Form.Item 
             label="Contraseña" 
             name="password" 
-            rules={[{ required: true, message: "Ingrese una contraseña" }]}
+            rules={[
+              { required: true, message: "Ingrese una contraseña" },
+              { max: 8, message: "La contraseña solo debe contener 8 caracteres" },
+              { pattern: /^\S*$/, message: "La contraseña no puede contener espacios" }
+            ]}
           >
             <Input.Password placeholder="Ingrese su contraseña" />
           </Form.Item>

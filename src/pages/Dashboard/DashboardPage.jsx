@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Card, Typography, Space, Modal } from "antd";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../../layouts/MainLayout";
@@ -14,47 +14,56 @@ const DashboardPage = () => {
   const SESSION_DURATION = 60 * 1000; // 1 minuto
   const WARNING_TIME = SESSION_DURATION - 10 * 1000; // 10 segundos antes
 
-  const startSessionTimers = () => {
-    // Limpiar temporizadores anteriores
+  // Función para cerrar sesión
+  const handleLogout = useCallback(() => {
+    // Limpiar credenciales antes de la redirección
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    navigate("/login");
+  }, [navigate]);
+
+  // Función para iniciar los temporizadores de sesión
+  const startSessionTimers = useCallback(() => {
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
     if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
 
-    // Configurar nuevo temporizador para la alerta
     warningTimerRef.current = setTimeout(() => {
       setModalVisible(true);
 
-      // Si no responde en 10 segundos, cerrar sesión
       logoutTimerRef.current = setTimeout(() => {
         handleLogout();
       }, 10 * 1000);
     }, WARNING_TIME);
-  };
+  }, [handleLogout]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-
+  
     if (!token) {
-      navigate("/login");
+      navigate("/login");  // Redirige al login si no hay token
       return;
     }
-
+  
     startSessionTimers();
-
+  
+    // Bloquear la navegación hacia atrás
+    const blockNavigation = () => {
+      window.history.pushState(null, null, window.location.pathname);
+    };
+  
+    blockNavigation();
+    window.addEventListener("popstate", blockNavigation);
+  
     return () => {
+      window.removeEventListener("popstate", blockNavigation);
       clearTimeout(warningTimerRef.current);
       clearTimeout(logoutTimerRef.current);
     };
-  }, []);
-
+  }, [navigate, startSessionTimers]);
+  
   const handleContinueSession = () => {
     setModalVisible(false);
     startSessionTimers(); // Reiniciar temporizadores
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
-    navigate("/login");
   };
 
   return (

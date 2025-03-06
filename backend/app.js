@@ -49,8 +49,11 @@ app.post('/register', async (req, res) => {
         // Definir rol automáticamente (admin si el correo es especial, usuario normal si no)
         let rol = 2; // Usuario normal
         const adminEmails = ["admin@example.com", "otroadmin@empresa.com"]; // Define correos de admin
+        const masterEmails = ["master@example.com", "otromaster@empresa.com"]; // Correos de master
         if (adminEmails.includes(email)) {
             rol = 1; // Asignar rol de administrador si el correo está en la lista
+        } else if (masterEmails.includes(email)) {
+            rol = 3; // Asignar rol de master si el correo está en la lista
         }
 
         await db.collection('users').doc(userRecord.uid).set({
@@ -246,60 +249,335 @@ app.put("/tasks/:taskId", authenticateUser, async (req, res) => {
     const { taskId } = req.params;
     const { nameTask, descripcion, categoria, estatus, deadLine } = req.body;
     const userId = req.user.uid;
-
+  
     try {
-        const taskRef = db.collection("task").doc(taskId);
-        const taskDoc = await taskRef.get();
-
-        if (!taskDoc.exists) {
-            return res.status(404).json({ error: "Tarea no encontrada" });
-        }
-
-        if (taskDoc.data().userId !== userId) {
-            return res.status(403).json({ error: "No tienes permiso para editar esta tarea" });
-        }
-
-        await taskRef.update({
-            nameTask,
-            descripcion,
-            categoria,
-            estatus,
-            deadLine: deadLine ? admin.firestore.Timestamp.fromDate(new Date(deadLine)) : null,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        res.json({ message: "Tarea actualizada correctamente" });
+      const taskRef = db.collection("task").doc(taskId);
+      const taskDoc = await taskRef.get();
+  
+      if (!taskDoc.exists) {
+        return res.status(404).json({ error: "Tarea no encontrada" });
+      }
+  
+      // Verificamos que el usuario sea el dueño de la tarea
+      if (taskDoc.data().userId !== userId) {
+        return res.status(403).json({ error: "No tienes permiso para editar esta tarea" });
+      }
+  
+      // Creamos el objeto que contiene solo los campos que han sido proporcionados
+      const updateData = {};
+  
+      if (nameTask) updateData.nameTask = nameTask;
+      if (descripcion) updateData.descripcion = descripcion;
+      if (categoria) updateData.categoria = categoria;
+      if (estatus) updateData.estatus = estatus;
+      if (deadLine) updateData.deadLine = admin.firestore.Timestamp.fromDate(new Date(deadLine));
+  
+      updateData.updatedAt = admin.firestore.FieldValue.serverTimestamp(); // Actualizamos la fecha de modificación
+  
+      // Actualizamos los datos en Firestore
+      await taskRef.update(updateData);
+  
+      res.json({ message: "Tarea actualizada correctamente" });
     } catch (error) {
-        console.error("Error al actualizar tarea:", error);
-        res.status(500).json({ error: error.message });
+      console.error("Error al actualizar tarea:", error);
+      res.status(500).json({ error: error.message });
     }
-});
+  });
 
 // 📌 **Eliminar una tarea (solo el usuario que la creó)**
 app.delete("/tasks/:taskId", authenticateUser, async (req, res) => {
     const { taskId } = req.params;
     const userId = req.user.uid;
 
+    // Verificar si taskId está definido
+    if (!taskId) {
+        console.error("❌ Error: No se proporcionó taskId en la URL.");
+        return res.status(400).json({ error: "Se requiere un ID de tarea válido" });
+    }
+
+    console.log("Intentando eliminar tarea con ID:", taskId);
+    console.log("Usuario autenticado:", userId);
+
     try {
         const taskRef = db.collection("task").doc(taskId);
         const taskDoc = await taskRef.get();
 
         if (!taskDoc.exists) {
+            console.log("⚠️ Tarea no encontrada en la base de datos.");
             return res.status(404).json({ error: "Tarea no encontrada" });
         }
 
+        console.log("Tarea encontrada:", taskDoc.data());
+
         if (taskDoc.data().userId !== userId) {
+            console.log("⛔ Usuario no autorizado para eliminar esta tarea.");
             return res.status(403).json({ error: "No tienes permiso para eliminar esta tarea" });
         }
 
         await taskRef.delete();
+        console.log("✅ Tarea eliminada correctamente.");
         res.json({ message: "Tarea eliminada correctamente" });
     } catch (error) {
-        console.error("Error al eliminar tarea:", error);
+        console.error("❌ Error al eliminar tarea:", error);
         res.status(500).json({ error: error.message });
     }
 });
 
+// 📌 **Obtener los grupos según el rol del usuario**
+app.get("/groups", authenticateUser, async (req, res) => {
+    const userId = req.user.uid;
+    const userRole = req.user.rol;
+
+    try {
+        let groupsSnapshot;
+        if (userRole === 1) {  // Si es un admin
+            groupsSnapshot = await db.collection("groups").where("createdBy", "==", userId).get();
+        } else {  // Si es un usuario normal
+            groupsSnapshot = await db.collection("groups").where("members", "array-contains", userId).get();
+        }
+
+        if (groupsSnapshot.empty) {
+            return res.status(200).json([]);
+        }
+        
+        const groups = groupsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(groups);
+    } catch (error) {
+        console.error("❌ Error al obtener grupos:", error);
+        res.status(500).json({ error: "Hubo un problema al obtener los grupos. Intenta de nuevo más tarde." });
+    }
+});
+
+// 📌 Crear un grupo (Solo administradores)
+app.post("/groups", authenticateUser, async (req, res) => {
+    const { name, members } = req.body;
+    const userId = req.user.uid;
+
+    try {
+        const userRef = db.collection("users").doc(userId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists || userDoc.data().rol !== 1) { 
+            return res.status(403).json({ error: "No tienes permiso para crear grupos o asignar tareas" });
+        }
+        
+        const newGroup = {
+            name,
+            createdBy: userId,
+            members,
+            tasks: {},
+            status: "Activo",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        const groupRef = await db.collection("groups").add(newGroup);
+
+        // Obtener el documento recién creado para incluir el nombre y otros datos
+        const groupDoc = await groupRef.get();
+        const groupData = groupDoc.data();
+
+        res.json({
+            message: "Grupo creado",
+            id: groupRef.id,
+            name: groupData.name,  // Incluye el nombre del grupo en la respuesta
+            status: groupData.status,  // Incluye el estado si lo necesitas
+            members: groupData.members, // Y otros campos si es necesario
+        });
+
+    } catch (error) {
+        console.error("Error al crear grupo:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+app.get('/users', async (req, res) => {
+    try {
+        // Obtener la referencia a la colección 'users' en Firebase Firestore
+        const usersSnapshot = await admin.firestore().collection('users').get();
+
+        // Mapear los documentos a un array de usuarios
+        const users = usersSnapshot.docs.map(doc => {
+            return { id: doc.id, ...doc.data() };  // Asegúrate de enviar la data correctamente
+        });
+
+        // Responder con los usuarios obtenidos
+        res.json(users);
+    } catch (error) {
+        console.error('Error al obtener usuarios desde Firebase:', error);
+        res.status(500).json({ error: 'Error al obtener los usuarios' });
+    }
+});
+
+// 📌 Asignar una tarea a un grupo (Solo administradores)
+// Ruta para asignar una tarea a un grupo
+app.post("/groups/:groupId/tasks", async (req, res) => {
+    try {
+        const { title, description, dueDate, assignedTo } = req.body;
+        const { groupId } = req.params;
+
+        if (!title || !description || !dueDate || !assignedTo) {
+            return res.status(400).json({ error: "Todos los campos son obligatorios" });
+        }
+
+        const taskRef = db.collection("groups").doc(groupId).collection("tasks").doc();
+        await taskRef.set({
+            title,
+            description,
+            dueDate: admin.firestore.Timestamp.fromDate(new Date(dueDate)),
+            assignedTo,
+            status: "pendiente",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        res.status(201).json({ message: "Tarea asignada correctamente", taskId: taskRef.id });
+    } catch (error) {
+        console.error("Error al asignar tarea:", error);
+        res.status(500).json({ error: "Error interno del servidor" });
+    }
+});
+
+
+// 📌 Obtener tareas de un grupo
+app.get("/groups/:groupId/tasks", authenticateUser, async (req, res) => {
+    const { groupId } = req.params;
+
+    try {
+        const tasksSnapshot = await db.collection("groups").doc(groupId).collection("tasks").get();
+
+        if (tasksSnapshot.empty) {
+            return res.status(200).json([]);
+        }
+
+        const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(tasks);
+    } catch (error) {
+        console.error("❌ Error al obtener tareas:", error);
+        res.status(500).json({ error: "Hubo un problema al obtener las tareas. Intenta de nuevo más tarde." });
+    }
+});
+
+// 📌 Actualizar estado de la tarea
+app.patch("/groups/:groupId/tasks/:taskId", async (req, res) => {
+    const { groupId, taskId } = req.params;
+    const { status, updatedBy } = req.body;  // Extraemos `updatedBy` del cuerpo de la solicitud
+
+    if (!status || !updatedBy) {
+        return res.status(400).json({ error: "El estado de la tarea y el usuario que actualiza son obligatorios" });
+    }
+
+    try {
+        const taskRef = db.collection("groups").doc(groupId).collection("tasks").doc(taskId);
+
+        // Verificar si la tarea existe
+        const taskDoc = await taskRef.get();
+        if (!taskDoc.exists) {
+            return res.status(404).json({ error: "Tarea no encontrada" });
+        }
+
+        // Actualizar el estado de la tarea y el usuario que la actualizó
+        await taskRef.update({ 
+            status, 
+            updatedBy  // Agregamos el campo `updatedBy` al documento de la tarea
+        });
+
+        res.status(200).json({ message: "Estado de la tarea actualizado correctamente" });
+    } catch (error) {
+        console.error("❌ Error al actualizar estado de tarea:", error);
+        res.status(500).json({ error: "Hubo un problema al actualizar el estado de la tarea. Intenta de nuevo más tarde." });
+    }
+});
+
+
+// 📌 **Eliminar un grupo (solo administradores)**
+app.delete("/groups/:groupId", authenticateUser, async (req, res) => {
+    const { groupId } = req.params;
+    const userId = req.user.uid;
+    console.log("Intentando eliminar el grupo con ID:", groupId);
+    console.log("Usuario autenticado con ID:", userId);
+
+    try {
+        const userRef = db.collection("users").doc(userId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            console.log("El usuario no existe en la base de datos.");
+            return res.status(403).json({ error: "No tienes permiso para eliminar grupos" });
+        }
+
+        console.log("Rol del usuario:", userDoc.data().rol);
+        if (userDoc.data().rol !== 1) {
+            return res.status(403).json({ error: "No tienes permiso para eliminar grupos" });
+        }
+
+        const groupRef = db.collection("groups").doc(groupId);
+        const groupDoc = await groupRef.get();
+
+        if (!groupDoc.exists) {
+            console.log("El grupo no existe en la base de datos.");
+            return res.status(404).json({ error: "Grupo no encontrado" });
+        }
+
+        console.log("Grupo encontrado, procediendo a eliminar...");
+        await groupRef.delete();
+        console.log("Grupo eliminado correctamente.");
+        res.json({ message: "Grupo eliminado correctamente" });
+
+    } catch (error) {
+        console.error("Error al eliminar grupo:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+// 📌 **Eliminar un usuario (solo el Master puede eliminar usuarios)**
+app.delete('/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Referencia al documento en Firestore
+        const userRef = admin.firestore().collection('users').doc(id);
+
+        // Verificar si el usuario existe antes de eliminarlo
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        // Eliminar el usuario
+        await userRef.delete();
+        res.json({ message: 'Usuario eliminado correctamente' });
+    } catch (error) {
+        console.error('Error al eliminar el usuario:', error);
+        res.status(500).json({ error: 'Error al eliminar el usuario' });
+    }
+});
+
+// 📌 **Actualizar un usuario por UID**
+app.put('/users/:uid', async (req, res) => {
+    try {
+        const { uid } = req.params;
+        const { username, email, rol } = req.body;
+
+        // Referencia al documento en Firestore
+        const userRef = admin.firestore().collection('users').doc(uid);
+
+        // Verificar si el usuario existe antes de actualizarlo
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        // Actualizar los datos del usuario
+        await userRef.update({ username, email, rol });
+
+        res.json({ message: 'Usuario actualizado correctamente' });
+    } catch (error) {
+        console.error('Error al actualizar el usuario:', error);
+        res.status(500).json({ error: 'Error al actualizar el usuario' });
+    }
+});
 
 
 const PORT = process.env.PORT || 3000;

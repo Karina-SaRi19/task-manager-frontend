@@ -1,74 +1,174 @@
 import React, { useState, useEffect } from "react";
-import { Card, Typography, Modal, Form, Input, Select, FloatButton, Collapse } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Card, Typography, Modal, Button, Input, Form, FloatButton, Select } from "antd";
+import {
+  PlusOutlined,
+  CalendarOutlined,
+  FileTextOutlined,
+  UserOutlined,
+  CheckCircleOutlined,
+  ToolOutlined,
+  ReadOutlined,
+  ShoppingOutlined,
+  BellOutlined,
+} from "@ant-design/icons";
 import MainLayout from "../../layouts/MainLayout";
 
 const { Title } = Typography;
 const { Option } = Select;
-const { Panel } = Collapse; // Componente Collapse de Ant Design
 
 const TaskPage = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [taskList, setTaskList] = useState([]);
+  const [selectedTask, setSelectedTask] = useState(null);
   const [form] = Form.useForm();
-  const [selectedTask, setSelectedTask] = useState(null); // Estado para mostrar los detalles de la tarea seleccionada
 
-  // Estados del formulario de tarea
   const [nameTask, setNameTask] = useState("");
   const [estatus, setEstatus] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [categoria, setCategoria] = useState("");
-  const [timeValue, setTimeValue] = useState(""); // Campo de cantidad de tiempo
-  const [timeUnit, setTimeUnit] = useState("days"); // Unidad de tiempo (por defecto 'días')
+  const [categoria, setCategoria] = useState(""); // Ahora es un Select
+  const [timeValue, setTimeValue] = useState("");
+  const [timeUnit, setTimeUnit] = useState("days");
+  const [isEditing, setIsEditing] = useState(false);
 
-  // Función para cargar las tareas del usuario
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
   const loadTasks = async () => {
     const token = localStorage.getItem("token");
-
     if (!token) {
-      console.log("Token no encontrado. El usuario no está autenticado.");
+      console.log("Token no encontrado.");
       return;
     }
 
     try {
       const response = await fetch("http://localhost:3000/tasks", {
         method: "GET",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTaskList(data);
+      } else {
+        alert("Error al cargar las tareas.");
+      }
+    } catch (error) {
+      alert("Hubo un problema al conectar con el servidor.");
+    }
+  };
+
+  const handleOpenModal = (task = null) => {
+    setSelectedTask(task);
+    setModalVisible(true);
+    setIsEditing(true);  // Cambié esto a true para que ya pueda editar al abrir el modal
+  };
+  
+  const handleCancel = () => {
+    setModalVisible(false);
+    setSelectedTask(null);
+    setIsEditing(false);
+  };
+
+
+  const handleDelete = async (task) => {
+    const token = localStorage.getItem("token");
+   
+    if (!task) {
+      alert("No se ha seleccionado una tarea.");
+      return;
+    }
+  
+    const taskId = task.id;
+   
+    if (!taskId) {
+      alert("No se ha encontrado un ID válido para la tarea.");
+      return;
+    }
+  
+    console.log(`Eliminando tarea con ID: ${taskId}`);
+  
+    try {
+      const response = await fetch(`http://localhost:3000/tasks/${taskId}`, {
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
-
+  
+      const data = await response.json();
+      console.log("Respuesta del servidor:", response.status, data);
+  
       if (response.ok) {
-        const data = await response.json();
-        setTaskList(data); // Cargar las tareas en el estado
+        alert("Tarea eliminada exitosamente");
+        setTaskList(taskList.filter(task => task.id !== taskId)); // Actualiza la lista de tareas
       } else {
-        console.error("Error al obtener las tareas:", response.status);
-        alert("Error al cargar las tareas.");
+        alert(`Error al eliminar la tarea: ${data.error}`);
       }
     } catch (error) {
-      console.error("Error de conexión:", error);
-      alert("Hubo un problema al conectar con el servidor");
+      console.error("❌ Error al realizar la solicitud:", error);
+      alert("Hubo un problema al eliminar la tarea.");
     }
   };
+    
 
-  // Llamar a loadTasks cuando el componente se monte
-  useEffect(() => {
-    loadTasks();
-  }, []);
-
-  const handleOpenModal = () => {
-    setModalVisible(true);
+  const handleUpdateTask = async () => {
+    const token = localStorage.getItem("token");
+  
+    // Verificar si se ha seleccionado una tarea válida
+    console.log("Tarea seleccionada:", selectedTask);
+    if (!selectedTask || !selectedTask.id) {
+      alert("No se ha seleccionado una tarea válida.");
+      return;
+    }
+      
+    // Verificamos si al menos uno de los campos está siendo modificado
+    if (!nameTask && !descripcion && !categoria && !timeValue && !estatus) {
+      alert("Por favor completa al menos un campo para actualizar.");
+      return;
+    }
+  
+    try {
+      const updatedData = {};
+  
+      // Solo actualizamos los campos que han cambiado
+      if (nameTask) updatedData.nameTask = nameTask;
+      if (descripcion) updatedData.descripcion = descripcion;
+      if (categoria) updatedData.categoria = categoria;
+      if (timeValue) updatedData.time = timeValue;
+      if (timeUnit) updatedData.timeUnit = timeUnit;
+      if (estatus) updatedData.estatus = estatus;
+  
+      // Enviamos la solicitud PUT al backend
+      const response = await fetch(`http://localhost:3000/tasks/${selectedTask.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updatedData),
+      });
+              
+      const data = await response.json();
+  
+      // Si la respuesta es exitosa, actualizamos el estado
+      if (response.ok) {
+        setTaskList(taskList.map(task => task.id === selectedTask.id ? { ...task, ...updatedData } : task));
+        setModalVisible(false);
+        setSelectedTask(null);
+        setIsEditing(false);
+      } else {
+        alert(`Error al actualizar la tarea: ${data.error || "Hubo un problema al actualizar la tarea."}`);
+      }
+    } catch (error) {
+      alert("Hubo un problema al actualizar la tarea.");
+    }
   };
-
-  const handleCancel = () => {
-    setModalVisible(false);
-  };
-
+    
   // Función para agregar una tarea
   const handleAddTask = async () => {
     const token = localStorage.getItem("token");
-    console.log("Token obtenido del localStorage:", token);
 
     // Verificar que se haya ingresado un valor válido de tiempo
     if (!timeValue || isNaN(timeValue) || timeValue <= 0) {
@@ -81,15 +181,15 @@ const TaskPage = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Envía el token en los headers
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           nameTask,
           descripcion,
           categoria,
           estatus,
-          time: timeValue, // tiempo en número
-          timeUnit, // unidad de tiempo: 'days', 'hours', 'minutes', 'weeks'
+          time: timeValue,
+          timeUnit,
         }),
       });
 
@@ -97,14 +197,14 @@ const TaskPage = () => {
 
       if (response.status === 403) {
         alert("Tu sesión ha expirado. Por favor, inicia sesión de nuevo.");
-        localStorage.removeItem("token"); // Eliminar el token expirado
-        window.location.href = "/login"; // Redirigir a login
+        localStorage.removeItem("token");
+        window.location.href = "/login";
         return;
       }
 
       if (response.ok) {
-        setTaskList([...taskList, { taskId: data.taskId, nameTask, descripcion, categoria, estatus, time: timeValue, timeUnit }]); // Agregar la nueva tarea a la lista
-        setModalVisible(false);
+        setTaskList([...taskList, { taskId: data.taskId, nameTask, descripcion, categoria, estatus, time: timeValue, timeUnit }]);
+        setModalVisible(false); // Cerrar el modal de agregar tarea
         form.resetFields();
       } else {
         console.error("Error al agregar tarea:", data.error);
@@ -116,50 +216,147 @@ const TaskPage = () => {
     }
   };
 
-  const handleTaskClick = (task) => {
-    console.log("Tarea seleccionada:", task); // Añadir esto para depurar
-    setSelectedTask(task); // Guarda la tarea seleccionada en el estado
+  const getIconForTask = (taskName) => {
+    if (taskName.toLowerCase().includes("reunión")) return <CalendarOutlined />;
+    if (taskName.toLowerCase().includes("documento")) return <FileTextOutlined />;
+    if (taskName.toLowerCase().includes("usuario")) return <UserOutlined />;
+    if (taskName.toLowerCase().includes("completado")) return <CheckCircleOutlined />;
+    if (taskName.toLowerCase().includes("configuración")) return <ToolOutlined />;
+    if (taskName.toLowerCase().includes("educación")) return <ReadOutlined />;
+    if (taskName.toLowerCase().includes("compra")) return <ShoppingOutlined />;
+    if (taskName.toLowerCase().includes("notificación")) return <BellOutlined />;
+    return <UserOutlined />;
   };
 
-  
+  const categoryColors = {
+    Desarrollo: "#FFDDC1",
+    Reunión: "#FFD1DC",
+    Documentación: "#C1E1C1",
+    Soporte: "#D4A5A5",
+    Diseño: "#D1C1E1",
+    Investigación: "#B5EAD7",
+  };
+
   return (
     <MainLayout>
-      {/* 📌 Contenedor de Tareas */}
-      <Card style={{ width: "100%", maxWidth: 800, margin: "20px auto", padding: "20px" }}>
+      <Card style={{ width: "100%", maxWidth: 900, margin: "20px auto", padding: "20px" }}>
         <Title level={2}>Tasks</Title>
 
         {taskList.length === 0 ? (
           <p>No hay tareas aún. Agrega una nueva.</p>
         ) : (
-          // Aquí agregamos el Collapse para las tareas
-          <Collapse accordion>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "15px" }}>
             {taskList.map((task, index) => (
-              <Panel
-                header={task.nameTask} // El título que aparece en el panel
-                key={task.taskId} // Usamos el taskId como clave
-                extra={<span>{task.estatus}</span>} // Mostrar el estado de la tarea al lado del título
-                onClick={() => handleTaskClick(task)}  // Llamar a handleTaskClick cuando se hace clic
-              >
-                <div>
-                  <p><strong>Descripción:</strong> {task.descripcion}</p>
-                  <p><strong>Categoría:</strong> {task.categoria}</p>
-                  <p><strong>Fecha límite:</strong> {task.time} {task.timeUnit}</p>
-                </div>
-              </Panel>
-            ))}
-          </Collapse>
-        )}
-      </Card>
+                <Card
+                  key={task.taskId}
+                  style={{
+                    padding: "20px",
+                    borderRadius: "12px",
+                    backgroundColor: categoryColors[task.categoria] || "#E2F0CB",
+                    cursor: "pointer",
+                    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.15)",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    minHeight: "270px",
+                    transition: "transform 0.2s ease-in-out",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.02)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                >
+                  {/* Encabezado con Icono y Nombre */}
+                  <div style={{ display: "flex", alignItems: "center", marginBottom: "12px" }}>
+                    <div
+                      style={{
+                        marginRight: "10px",
+                        fontSize: "20px",
+                        color: "#555",
+                      }}
+                    >
+                      {getIconForTask(task.nameTask)}
+                    </div>
+                    <Title level={4} style={{ margin: 0, flex: 1, fontWeight: "bold" }}>
+                      {task.nameTask}
+                    </Title>
+                  </div>
 
-      {/* 📌 Botón Flotante para abrir el Modal */}
-      <FloatButton
+
+                  {/* Detalles */}
+                  <div style={{ fontSize: "14px", color: "#666" }}>
+                  <p>
+                      <strong>Descripción:</strong> {task.descripcion}
+                    </p>
+                    <p>
+                      <strong>Categoría:</strong>{" "}
+                      <span
+                        style={{
+                          backgroundColor: "#fff",
+                          padding: "3px 8px",
+                          borderRadius: "6px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {task.categoria}
+                      </span>
+                    </p>
+                    <p>
+                      <strong>Estado:</strong>{" "}
+                      <span
+                        style={{
+                          color: 
+                            task.estatus === "Done" ? "green" :
+                            task.estatus === "In Progress" ? "orange" :
+                            task.estatus === "Paused" ? "#9C27B0" :
+                            task.estatus === "Revision" ? "blue" :
+                            "black", // Color por defecto
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {task.estatus}
+                      </span>
+                    </p>
+                    <p>
+                      <strong>Tiempo de entrega:</strong> {task.time} {task.timeUnit}
+                    </p>
+                  </div>
+
+            {/* Botones */}
+            <div
+              style={{
+                marginTop: "40px", // Mueve los botones más abajo
+                display: "flex",  
+                gap: "10px", // Juntarlos más
+                marginLeft: "70px", // Mover los botones a la derecha
+              }}
+            >
+            <Button onClick={() => handleOpenModal(task)} type="primary" size="small">
+              Editar
+            </Button>
+            <Button 
+            onClick={() => {
+              console.log("Botón de eliminar fuera del modal presionado");
+              handleDelete(task);
+            }} 
+            danger 
+            size="small">
+            Eliminar
+          </Button>
+          </div>
+          </Card>
+        ))}
+      </div>
+    )}
+  </Card>
+
+{/* 📌 Botón Flotante para abrir el Modal */}
+<FloatButton
         icon={<PlusOutlined />}
         type="primary"
         style={{ right: 30, bottom: 30 }}
-        onClick={handleOpenModal}
+        onClick={() => setModalVisible(true)}  // Abre solo el modal de agregar tarea
       />
 
-      {/* 📌 Modal con Formulario */}
+      {/* Modal de agregar tarea */}
       <Modal
         title="Nueva Tarea"
         open={modalVisible}
@@ -225,30 +422,106 @@ const TaskPage = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item name="categoria" label="Categoría">
-            <Input
-              placeholder="Ejemplo: Desarrollo"
+          {/* Selector de categoría */}
+          <Form.Item name="categoria" label="Categoría" rules={[{ required: true, message: "Selecciona una categoría" }]}>
+            <Select
+              placeholder="Selecciona una categoría"
               value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-            />
+              onChange={(value) => setCategoria(value)}
+            >
+              <Option value="Desarrollo">Desarrollo</Option>
+              <Option value="Reunión">Reunión</Option>
+              <Option value="Documentación">Documentación</Option>
+              <Option value="Soporte">Soporte</Option>
+              <Option value="Diseño">Diseño</Option>
+              <Option value="Investigación">Investigación</Option>
+
+            </Select>
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* 📌 Modal de detalles de la tarea seleccionada */}
+
       {selectedTask && (
-  <Modal
-    title="Detalles de la tarea"
-    open={true}
-    onCancel={() => setSelectedTask(null)}  // Cerrar el modal al hacer clic en cancelar
-    footer={null}
-  >
-    <p><strong>Descripción:</strong> {selectedTask.descripcion}</p>
-    <p><strong>Categoría:</strong> {selectedTask.categoria ? selectedTask.categoria : "No especificada"}</p>
-    <p><strong>Fecha límite:</strong> {selectedTask.time} {selectedTask.timeUnit}</p>
-    <p><strong>Estatus:</strong> {selectedTask.estatus}</p>
-  </Modal>
-)}
+        <Modal
+        title="Detalles de la tarea"
+        open={modalVisible}
+        onCancel={handleCancel}
+        footer={[
+          isEditing && (
+            <Button key="save" onClick={handleUpdateTask} type="primary">
+              Guardar Cambios
+            </Button>
+          ),
+        ]}
+
+        >
+          <Form form={form} layout="vertical">
+            <Form.Item label="Nombre de la tarea">
+              <Input
+                value={nameTask || selectedTask.nameTask}
+                onChange={(e) => setNameTask(e.target.value)}
+                disabled={!isEditing}
+              />
+            </Form.Item>
+            <Form.Item label="Descripción">
+              <Input.TextArea
+                value={descripcion || selectedTask.descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                disabled={!isEditing}
+              />
+            </Form.Item>
+            <Form.Item label="Tiempo de entrega">
+              <div style={{ display: "flex", gap: "10px" }}>
+                <Input
+                  placeholder="Cantidad"
+                  type="number"
+                  value={timeValue || selectedTask.time}
+                  onChange={(e) => setTimeValue(e.target.value)}
+                  disabled={!isEditing}
+                  style={{ width: "80px" }}
+                />
+                <Select
+                  value={timeUnit}
+                  onChange={setTimeUnit}
+                  disabled={!isEditing}
+                  style={{ width: "100px" }}
+                >
+                  <Option value="days">Días</Option>
+                  <Option value="hours">Horas</Option>
+                </Select>
+              </div>
+            </Form.Item>
+            <Form.Item label="Categoría">
+              <Select
+                value={categoria || selectedTask.categoria}
+                onChange={setCategoria}
+                disabled={!isEditing}
+              >
+                <Option value="Desarrollo">Desarrollo</Option>
+                <Option value="Reunión">Reunión</Option>
+                <Option value="Documentación">Documentación</Option>
+                <Option value="Soporte">Soporte</Option>
+                <Option value="Diseño">Diseño</Option>
+                <Option value="Investigación">Investigación</Option>
+              </Select>
+            </Form.Item>
+            <Form.Item label="Estado">
+            <Select
+              value={estatus || selectedTask.estatus}
+              onChange={setEstatus}
+              disabled={!isEditing}
+              className={`status-${estatus.toLowerCase().replace(" ", "-")}`}
+            >
+              <Option value="In Progress">In Progress</Option>
+              <Option value="Done">Done</Option>
+              <Option value="Paused">Paused</Option>
+              <Option value="Revision">Revision</Option>
+            </Select>
+          </Form.Item>
+          </Form>
+        </Modal>
+      )}
     </MainLayout>
   );
 };

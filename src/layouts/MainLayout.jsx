@@ -7,6 +7,7 @@ const { SubMenu } = Menu;
 
 const MainLayout = ({ children }) => {
   const location = useLocation(); // 📌 Obtiene la ruta actual
+  const userRole = localStorage.getItem("userRole"); // 📌 Obtiene el rol del usuario
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -45,12 +46,24 @@ const MainLayout = ({ children }) => {
             </Menu.Item>
           </SubMenu>
 
-          <Menu.Item key="/Task" style={{ marginBottom: "10px" }}>
-            <Link to="/Task">Tasks</Link>
-          </Menu.Item>
-          <Menu.Item key="/profile" style={{ marginBottom: "10px" }}>
-            <Link to="/profile">Profile</Link>
-          </Menu.Item>
+          {/* 📌 Opciones específicas según el rol */}
+          {(userRole === "2" || userRole === "1") && (
+            <>
+              <Menu.Item key="/Task" style={{ marginBottom: "10px" }}>
+                <Link to="/Task">Tasks</Link>
+              </Menu.Item>
+              <Menu.Item key="/groups" style={{ marginBottom: "10px" }}>
+                <Link to="/groups">Groups</Link>
+              </Menu.Item>
+            </>
+          )}
+
+          {userRole === "3" && (
+            <Menu.Item key="/users" style={{ marginBottom: "10px" }}>
+              <Link to="/users">Users</Link>
+            </Menu.Item>
+          )}
+
           <Menu.Item key="/login" style={{ marginBottom: "10px" }}>
             <Link to="/login">Cerrar Sesión</Link>
           </Menu.Item>
