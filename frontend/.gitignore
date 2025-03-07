@@ -1,7 +1,0 @@
-# Ignorar taskServiceKey.json
-backend/taskServiceKey.json
-
-# Ignorar node_modules
-node_modules/
-
-# Otros archivos y carpetas que quieras ignorar
