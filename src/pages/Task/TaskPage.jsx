@@ -42,7 +42,7 @@ const TaskPage = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:3000/tasks", {
+      const response = await fetch("https://task-manager-backend-sge9.onrender.com/tasks", {
         method: "GET",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
@@ -89,7 +89,7 @@ const TaskPage = () => {
     console.log(`Eliminando tarea con ID: ${taskId}`);
   
     try {
-      const response = await fetch(`http://localhost:3000/tasks/${taskId}`, {
+      const response = await fetch(`https://task-manager-backend-sge9.onrender.com/tasks/${taskId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -141,7 +141,7 @@ const TaskPage = () => {
       if (estatus) updatedData.estatus = estatus;
   
       // Enviamos la solicitud PUT al backend
-      const response = await fetch(`http://localhost:3000/tasks/${selectedTask.id}`, {
+      const response = await fetch(`https://task-manager-backend-sge9.onrender.com/tasks/${selectedTask.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -177,7 +177,7 @@ const TaskPage = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:3000/tasks", {
+      const response = await fetch("https://task-manager-backend-sge9.onrender.com/tasks", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

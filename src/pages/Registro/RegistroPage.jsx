@@ -12,7 +12,7 @@ const RegistroPage = () => {
   const handleRegister = async (values) => {
     setLoading(true);
     try {
-      await axios.post("http://localhost:3000/register", values); // Ya no se asigna a `response`
+      await axios.post("https://task-manager-backend-sge9.onrender.com/register", values); // Ya no se asigna a `response`
       message.success("Registro exitoso, ahora inicia sesión.");
       navigate("/login"); // Redirigir al login después del registro
     } catch (error) {

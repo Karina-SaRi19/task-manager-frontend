@@ -37,7 +37,7 @@ const GroupsPage = () => {
 
       try {
         // Obtener grupos
-        const groupsResponse = await fetch("http://localhost:3000/groups", {
+        const groupsResponse = await fetch("https://task-manager-backend-sge9.onrender.com/groups", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!groupsResponse.ok) throw new Error("Error al obtener grupos");
@@ -48,7 +48,7 @@ const GroupsPage = () => {
         setUserRole(decodedToken.rol);
 
         // Obtener lista de usuarios
-        const usersResponse = await fetch("http://localhost:3000/users", {
+        const usersResponse = await fetch("https://task-manager-backend-sge9.onrender.com/users", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (usersResponse.ok) setUsers(await usersResponse.json());
@@ -79,7 +79,7 @@ const GroupsPage = () => {
     };
 
     try {
-      const response = await fetch(`http://localhost:3000/groups/${selectedGroupId}/tasks`, {
+      const response = await fetch(`https://task-manager-backend-sge9.onrender.com/groups/${selectedGroupId}/tasks`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,7 +104,7 @@ const GroupsPage = () => {
   const handleCreateGroup = async (values) => {
     const token = localStorage.getItem("token");
     try {
-      const response = await fetch("http://localhost:3000/groups", {
+      const response = await fetch("https://task-manager-backend-sge9.onrender.com/groups", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -139,7 +139,7 @@ const GroupsPage = () => {
   const handleViewTasks = async (groupId) => {
     const token = localStorage.getItem("token");
     try {
-      const response = await fetch(`http://localhost:3000/groups/${groupId}/tasks`, {
+      const response = await fetch(`https://task-manager-backend-sge9.onrender.com/groups/${groupId}/tasks`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -174,7 +174,7 @@ const GroupsPage = () => {
     const token = localStorage.getItem("token");
   
     try {
-      const response = await fetch(`http://localhost:3000/groups/${selectedGroupId}/tasks`, {
+      const response = await fetch(`https://task-manager-backend-sge9.onrender.com/groups/${selectedGroupId}/tasks`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -207,7 +207,7 @@ const GroupsPage = () => {
     const updatedBy = decodedToken.username;  
   
     try {
-      const response = await fetch(`http://localhost:3000/groups/${groupId}/tasks/${selectedTask.id}`, {
+      const response = await fetch(`https://task-manager-backend-sge9.onrender.com/groups/${groupId}/tasks/${selectedTask.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -249,7 +249,7 @@ const GroupsPage = () => {
     }
   
     try {
-      const response = await fetch(`http://localhost:3000/groups/${groupId}`, {
+      const response = await fetch(`https://task-manager-backend-sge9.onrender.com/groups/${groupId}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,

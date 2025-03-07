@@ -16,7 +16,7 @@ const UsersPage = () => {
   const [isConfirmDeleteVisible, setIsConfirmDeleteVisible] = useState(false);
 
   useEffect(() => {
-    axios.get("http://localhost:3000/users")
+    axios.get("https://task-manager-backend-sge9.onrender.com/users")
       .then(response => setUsers(response.data))
       .catch(error => console.error("Error al obtener usuarios:", error));
   }, []);
@@ -25,7 +25,7 @@ const UsersPage = () => {
     console.log("Intentando eliminar el usuario con ID:", userId);
 
     try {
-        const response = await fetch(`http://localhost:3000/users/${userId}`, {
+        const response = await fetch(`https://task-manager-backend-sge9.onrender.com/users/${userId}`, {
             method: "DELETE",
             headers: {
                 "Content-Type": "application/json",
@@ -70,7 +70,7 @@ const UsersPage = () => {
   const handleUpdateUser = () => {
     form.validateFields().then((values) => {
       const updatedUser = { ...selectedUser, ...values, rol: values.rol === "Admin" ? 1 : values.rol === "Master" ? 3 : 2 };
-      axios.put(`http://localhost:3000/users/${selectedUser.uid}`, updatedUser)
+      axios.put(`https://task-manager-backend-sge9.onrender.com/users/${selectedUser.uid}`, updatedUser)
         .then(() => {
           setUsers(prevUsers => prevUsers.map(user => user.uid === updatedUser.uid ? updatedUser : user));
           handleCancel();
